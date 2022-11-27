@@ -2,14 +2,20 @@ const color = require('color');
 const fs = require('fs');
 const path = require('path');
 
-const channels = ['red', 'green', 'blue', 'alpha'];
+const channels = {
+  saturationl: 100,
+  lightness: 100,
+  alpha: 1,
+};
 
 const sourceColor = color('#8a49a8');
-const targetColor = color('#1a73e8');
+const targetColor = color('#344767');
+
+const targetHue = targetColor.hue();
 
 const calcDiffEachChannel = () => {
   const diff = {};
-  for (const channel of channels) {
+  for (const channel of Object.keys(channels)) {
     diff[channel] =
       targetColor[channel]() - sourceColor[channel]();
   }
@@ -20,7 +26,12 @@ const diff = calcDiffEachChannel();
 
 console.log('difference', diff);
 
-const patterns = [/(#[\da-f]{6})/gi];
+const patterns = [
+  /(#[\da-f]{6})/gi,
+  /(#[\da-f]{8})/gi,
+  /(rgb\([\d]+,[ ]*[\d]+,[ ]*[\d]+\))/gi,
+  /(rgba\([\d]+,[ ]*[\d]+,[ ]*[\d]+,[ ]*[\d]*[\.]?[\d]*\))/gi,
+];
 
 function fromDir(startPath, filter) {
   if (!fs.existsSync(startPath)) {
@@ -39,18 +50,21 @@ function fromDir(startPath, filter) {
       var content = buffer.toString();
       var replaced = 0;
       const convertColor = (colorString) => {
-        let newColor = color(colorString);
-        for (const channel of channels) {
+        let newColor = color(colorString.toLowerCase()).hue(
+          targetHue,
+        );
+        for (const channel of Object.keys(channels)) {
           let newChannelValue =
             newColor[channel]() + diff[channel];
-          if (newChannelValue > 255) {
-            newChannelValue = 255;
+          if (newChannelValue > channels[channel]) {
+            newChannelValue = channels[channel];
           }
           if (newChannelValue < 0) {
             newChannelValue = 0;
           }
           newColor = newColor[channel](newChannelValue);
         }
+        // newColor = color(colorString.toLowerCase());
         const replacer =
           newColor.alpha() === 1
             ? newColor.hex()
